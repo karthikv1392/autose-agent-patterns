@@ -1,0 +1,7 @@
+{
+ "title": "Fix the shopping-cart bugs",
+ "kind": "fix",
+ "entry": "cart.py",
+ "summary": "Two modules, several independent bugs. The agent must read, run tests, patch and re-run.",
+ "vague_goal": "Customers say the checkout totals are wrong and carts behave strangely. Please fix it."
+}

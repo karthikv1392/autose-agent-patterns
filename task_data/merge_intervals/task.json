@@ -1,0 +1,2 @@
+{"title": "Implement merge_intervals()", "kind": "generate", "entry": "solution.py",
+ "summary": "Classic interview problem; subtle points: touching intervals, no input mutation, validation."}

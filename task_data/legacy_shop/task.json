@@ -1,0 +1,2 @@
+{"title": "Modernise a legacy module set", "kind": "refactor", "entry": "",
+ "summary": "Four independent modules to add type hints, docstrings and logging to — a natural fan-out."}

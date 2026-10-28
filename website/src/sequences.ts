@@ -1,0 +1,129 @@
+// Sequence diagrams: who sends what to whom, in order. Keyed by pattern code.
+import type { Kind } from "./data";
+
+export type Participant = { name: string; kind: Kind };
+export type Message = { from: number; to: number; label: string; reply?: boolean };
+export type Fragment = { label: string; start: number; end: number }; // message indices, inclusive
+export type Sequence = { participants: Participant[]; messages: Message[]; fragments?: Fragment[] };
+
+const P = (name: string, kind: Kind): Participant => ({ name, kind });
+
+export const SEQUENCES: Record<string, Sequence> = {
+  S1: {
+    participants: [P("User", "input"), P("Agent", "tool"), P("Context gatherers", "tool"), P("LLM", "llm"), P("Sandbox", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Vague bug report" },
+      { from: 1, to: 2, label: "Read env, map repo, run tests, read source" },
+      { from: 2, to: 1, label: "Four context blocks", reply: true },
+      { from: 1, to: 3, label: "Goal + context (enriched prompt)" },
+      { from: 3, to: 1, label: "Patched files", reply: true },
+      { from: 1, to: 4, label: "Run hidden tests" },
+      { from: 4, to: 1, label: "Pass count", reply: true },
+      { from: 1, to: 0, label: "Patch + result", reply: true },
+    ],
+  },
+  S2: {
+    participants: [P("User", "input"), P("Agent", "tool"), P("LLM", "llm"), P("Tools", "tool"), P("Sandbox", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Bug report" },
+      { from: 1, to: 2, label: "Round 1: analyse the report" },
+      { from: 2, to: 1, label: "Analysis", reply: true },
+      { from: 1, to: 2, label: "Round 2: goal + analysis + tool list" },
+      { from: 2, to: 1, label: "Plan + chosen tool", reply: true },
+      { from: 1, to: 2, label: "Round 3: exact call, JSON only" },
+      { from: 2, to: 1, label: "Tool name + parameters", reply: true },
+      { from: 1, to: 3, label: "Call the tool" },
+      { from: 3, to: 1, label: "Tool output", reply: true },
+      { from: 1, to: 2, label: "Synthesis: all rounds + output" },
+      { from: 2, to: 1, label: "Complete fixed files", reply: true },
+      { from: 1, to: 4, label: "Run hidden tests" },
+      { from: 4, to: 1, label: "Pass count", reply: true },
+      { from: 1, to: 0, label: "Patch + result", reply: true },
+    ],
+  },
+  S3: {
+    participants: [P("User", "input"), P("Agent", "tool"), P("LLM (planner, reflector, executor)", "llm"), P("Sandbox", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Specification" },
+      { from: 1, to: 2, label: "Plan" },
+      { from: 2, to: 1, label: "Draft plan", reply: true },
+      { from: 1, to: 2, label: "Critique the plan against the spec" },
+      { from: 2, to: 1, label: "Issues + revised plan", reply: true },
+      { from: 1, to: 2, label: "Implement from the plan" },
+      { from: 2, to: 1, label: "Code", reply: true },
+      { from: 1, to: 3, label: "Run tests" },
+      { from: 3, to: 1, label: "Test report", reply: true },
+      { from: 1, to: 2, label: "Diagnose: code + output + earlier diagnoses" },
+      { from: 2, to: 1, label: "Diagnosis", reply: true },
+      { from: 1, to: 2, label: "Revise the code" },
+      { from: 2, to: 1, label: "Revised code", reply: true },
+      { from: 1, to: 3, label: "Run tests" },
+      { from: 3, to: 1, label: "Test report", reply: true },
+      { from: 1, to: 0, label: "Final code + result", reply: true },
+    ],
+    fragments: [{ label: "loop: while tests fail, up to max_revisions", start: 9, end: 14 }],
+  },
+  M1: {
+    participants: [P("User", "input"), P("Coordinator", "tool"), P("Reviewers (3)", "llm"), P("Judge", "llm"), P("Sandbox", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Pull request (code + spec)" },
+      { from: 1, to: 4, label: "Run tests on the PR as submitted" },
+      { from: 4, to: 1, label: "Baseline: failing", reply: true },
+      { from: 1, to: 2, label: "Review the code independently" },
+      { from: 2, to: 1, label: "Issues + position", reply: true },
+      { from: 1, to: 2, label: "Transcript: answer each other" },
+      { from: 2, to: 1, label: "Accept / reject + revised issues", reply: true },
+      { from: 1, to: 3, label: "Full transcript" },
+      { from: 3, to: 1, label: "Verdict + patched file", reply: true },
+      { from: 1, to: 4, label: "Run tests on the patch" },
+      { from: 4, to: 1, label: "Pass count", reply: true },
+      { from: 1, to: 0, label: "Verdict, patch, result", reply: true },
+    ],
+    fragments: [{ label: "loop: rebuttal rounds 1..K", start: 5, end: 6 }],
+  },
+  M2: {
+    participants: [P("User", "input"), P("Coordinator", "tool"), P("Candidates (N)", "llm"), P("Sandbox", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Specification" },
+      { from: 1, to: 2, label: "Same prompt, different style hint" },
+      { from: 2, to: 1, label: "N solutions", reply: true },
+      { from: 1, to: 3, label: "Run each on the probe inputs" },
+      { from: 3, to: 1, label: "Output signature per candidate", reply: true },
+      { from: 1, to: 1, label: "Group identical signatures; largest wins" },
+      { from: 1, to: 3, label: "Run hidden tests (audit only)" },
+      { from: 3, to: 1, label: "Scores", reply: true },
+      { from: 1, to: 0, label: "Winner + scoreboard", reply: true },
+    ],
+    fragments: [{ label: "par: candidates generated in parallel", start: 1, end: 2 }],
+  },
+  M3: {
+    participants: [P("User", "input"), P("Orchestrator", "tool"), P("Spawner", "llm"), P("Sub-agents", "llm"), P("Integrator", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Task + codebase" },
+      { from: 1, to: 2, label: "Repository summary + task" },
+      { from: 2, to: 1, label: "Team: name, file, persona, notes", reply: true },
+      { from: 1, to: 3, label: "Create one per spec; own file + signatures" },
+      { from: 3, to: 1, label: "Updated files", reply: true },
+      { from: 1, to: 4, label: "Merge the files" },
+      { from: 4, to: 4, label: "Run existing tests + static metrics" },
+      { from: 4, to: 1, label: "Merged code, test result, PR text", reply: true },
+      { from: 1, to: 0, label: "Refactored codebase", reply: true },
+    ],
+    fragments: [{ label: "par: sub-agents work in parallel", start: 3, end: 4 }],
+  },
+  M4: {
+    participants: [P("User", "input"), P("Coder", "llm"), P("Tester", "tool"), P("Debugger", "llm"), P("Reviewer", "llm"), P("Blackboard", "data")],
+    messages: [
+      { from: 0, to: 1, label: "Task (via dispatcher)" },
+      { from: 1, to: 5, label: "Write code" },
+      { from: 1, to: 2, label: "HANDOFF: tester" },
+      { from: 2, to: 5, label: "Read code, write test report" },
+      { from: 2, to: 3, label: "HANDOFF: debugger" },
+      { from: 3, to: 5, label: "Read report, write patch" },
+      { from: 3, to: 2, label: "HANDOFF: tester" },
+      { from: 2, to: 4, label: "All green: HANDOFF: reviewer" },
+      { from: 4, to: 0, label: "APPROVE: done", reply: true },
+    ],
+    fragments: [{ label: "loop: until green or hop limit", start: 4, end: 6 }],
+  },
+};

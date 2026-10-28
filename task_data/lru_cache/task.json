@@ -1,0 +1,2 @@
+{"title": "Implement an LRUCache class", "kind": "generate", "entry": "solution.py",
+ "summary": "Stateful class with recency semantics — good for a multi-agent write/test/debug loop."}

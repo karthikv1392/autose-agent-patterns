@@ -1,0 +1,2 @@
+{"title": "Review pull request: order queries", "kind": "review", "entry": "orders_db.py",
+ "summary": "A PR with a security hole, an edge-case crash and a backwards-compatibility trap."}

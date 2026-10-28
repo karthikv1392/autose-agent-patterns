@@ -1,0 +1,2 @@
+{"title": "Add CSV export to the shop codebase", "kind": "feature", "entry": "reporting.py",
+ "summary": "Feature that only works if the agent uses the repo's real models, helpers and error types."}

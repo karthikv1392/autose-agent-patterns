@@ -1,0 +1,7 @@
+{
+ "title": "Fix the pagination bugs",
+ "kind": "fix",
+ "entry": "pager.py",
+ "summary": "One module with off-by-one and boundary bugs \u2014 a compact first ReAct exercise.",
+ "vague_goal": "Users say the results pager is broken. Please fix it."
+}

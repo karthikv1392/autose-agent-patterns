@@ -1,0 +1,2 @@
+{"title": "Implement roman_to_int()", "kind": "generate", "entry": "solution.py",
+ "summary": "Strict Roman-numeral parser — the 'strict' part (rejecting IIII, VX, IC) is where models slip."}
