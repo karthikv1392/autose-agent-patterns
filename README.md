@@ -93,4 +93,5 @@ diagram that walks through what happens at every step.
 ./run.sh both        # website and Streamlit demo together
 ```
 
-To publish it as static files, run `npm run build` inside `website/` (output in `website/dist`).
+The site is deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main` that touches `website/`.
+To build it by hand, run `npm run build` inside `website/` (output in `website/dist`).
