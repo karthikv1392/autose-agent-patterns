@@ -86,12 +86,7 @@ def make_renderer(box):
     return render
 
 
-if st.button("▶ Run pattern", type="primary"):
-    box = st.container()
-    trace = Trace(on_event=make_renderer(box))
-    with st.spinner("Agents working… (local models can take a few minutes)"):
-        result = module.run(task_key, trace=trace, **options)
-
+def show_result(result):
     st.divider()
     (st.success if result["solved"] else st.warning)(result["headline"])
     c1, c2 = st.columns(2)
@@ -101,3 +96,56 @@ if st.button("▶ Run pattern", type="primary"):
         for name, src in result["files"].items():
             st.caption(name)
             st.code(src, language="python")
+
+
+def interactive_flow():
+    """Patterns with a human decision in the middle: plan, let the person decide, then execute."""
+    key = (pattern["id"], task_key, tuple(sorted(options.items())))
+    render = make_renderer(st.container())
+    if st.button("▶ Plan and classify", type="primary"):
+        trace = Trace()
+        with st.spinner("Planning and scoring the risk of each action…"):
+            state = module.plan(task_key, trace=trace, **options)
+        st.session_state["review"] = {"key": key, "state": state, "events": trace.events, "id": id(state)}
+        st.session_state.pop("review_result", None)
+        st.rerun()
+
+    review = st.session_state.get("review")
+    if not review or review["key"] != key:
+        return
+    for e in review["events"]:
+        render(e)
+
+    st.divider()
+    st.subheader("Human review")
+    high = [a for a in review["state"]["actions"] if a["approval_required"]]
+    approver = st.text_input("Your name (recorded in the audit trail)", "reviewer", key=f"who{review['id']}")
+    decisions = {}
+    for a in high:
+        with st.container(border=True):
+            st.markdown(f"**Action {a['index']} · risk {a['risk_score']}/10** — {a['action']}")
+            st.caption(f"{a['reversibility']} · scope {a['impact_scope']} · {a['reasoning']}")
+            choice = st.radio("Decision", ["Reject", "Approve"], horizontal=True, key=f"d{review['id']}{a['index']}")
+            note = st.text_input("Note (optional)", key=f"n{review['id']}{a['index']}")
+            decisions[a["index"]] = {"status": "approved" if choice == "Approve" else "rejected",
+                                     "approver": approver, "notes": note}
+    if not high:
+        st.info("No action needs approval, so everything can run.")
+    st.caption("Anything left on Reject, or without a decision, is skipped.")
+
+    if st.button("▶ Execute with these decisions", type="primary"):
+        box = st.container()
+        with st.spinner("Executing the allowed actions…"):
+            st.session_state["review_result"] = module.execute(review["state"], decisions, trace=Trace(on_event=make_renderer(box)))
+    if "review_result" in st.session_state:
+        show_result(st.session_state["review_result"])
+
+
+if pattern.get("interactive"):
+    interactive_flow()
+elif st.button("▶ Run pattern", type="primary"):
+    box = st.container()
+    trace = Trace(on_event=make_renderer(box))
+    with st.spinner("Agents working… (local models can take a few minutes)"):
+        result = module.run(task_key, trace=trace, **options)
+    show_result(result)

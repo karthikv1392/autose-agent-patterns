@@ -158,4 +158,21 @@ export const SEQUENCES: Record<string, Sequence> = {
     ],
     fragments: [{ label: "loop: until the gate passes or max_iterations", start: 1, end: 5 }],
   },
+  M7: {
+    participants: [P("User", "input"), P("Agent", "tool"), P("Risk classifier", "llm"), P("Human reviewer", "input"), P("Executor", "tool")],
+    messages: [
+      { from: 0, to: 1, label: "Task" },
+      { from: 1, to: 1, label: "Plan the actions" },
+      { from: 1, to: 2, label: "Classify the planned action" },
+      { from: 2, to: 1, label: "Score 1-10: low, medium or high", reply: true },
+      { from: 1, to: 3, label: "Approval card (high risk only)" },
+      { from: 3, to: 1, label: "Approve or reject, name, note", reply: true },
+      { from: 1, to: 4, label: "Run the allowed action" },
+      { from: 4, to: 1, label: "Outcome", reply: true },
+      { from: 1, to: 0, label: "Result + audit trail", reply: true },
+    ],
+    fragments: [
+      { label: "loop: for each planned action", start: 2, end: 7 },
+    ],
+  },
 };

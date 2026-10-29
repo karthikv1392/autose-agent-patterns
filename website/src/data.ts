@@ -822,7 +822,74 @@ const m6: RawPattern = {
   ],
 };
 
-const raw: RawPattern[] = [s1, s2, s3, m1, m2, m3, m4, m5, m6];
+/* ───────────────────────────── M7 ───────────────────────────── */
+
+const m7: RawPattern = {
+  id: "human-approval",
+  code: "M7",
+  group: "Multi-agent",
+  title: "Human-in-the-Loop Approval",
+  scenario: "Gate risky changes behind a human decision",
+  task: "cart_bugs, pager_bugs, legacy_shop",
+  llmCalls: "1 plan + 1 per action to classify + 1 per edit",
+  verifiedBy: "Hidden tests on the final project; every decision is in the audit trail",
+  diagram: {
+    height: 395,
+    groups: [{ x: 10, y: 332, w: 940, h: 44, label: "Audit trail: every plan, notification, decision and execution is logged" }],
+    nodes: [
+      { id: "task", label: "Task", sub: "+ project files", kind: "input", x: 20, y: 150, w: 110, h: 72 },
+      { id: "planner", label: "Planner", sub: "lists the actions", kind: "llm", x: 170, y: 150, w: 130, h: 72 },
+      { id: "risk", label: "Risk classifier", sub: "score 1-10\nper action", kind: "llm", x: 340, y: 150, w: 140, h: 72 },
+      { id: "auto", label: "Run automatically", sub: "low and medium risk", kind: "tool", x: 540, y: 45, w: 170, h: 66 },
+      { id: "human", label: "Human reviewer", sub: "approve or reject\nhigh-risk actions", kind: "input", x: 540, y: 220, w: 170, h: 80 },
+      { id: "exec", label: "Executor", sub: "edit, test, or\nsimulate", kind: "tool", x: 770, y: 130, w: 130, h: 82 },
+      { id: "tests", label: "Hidden tests", sub: "final project", kind: "tool", x: 770, y: 240, w: 130, h: 56 },
+    ],
+    edges: [
+      { id: "t-p", from: "task", to: "planner" },
+      { id: "p-r", from: "planner", to: "risk", label: "actions" },
+      { id: "r-a", from: "risk", to: "auto", fs: "r", ts: "l", label: "low / medium" },
+      { id: "r-h", from: "risk", to: "human", fs: "r", ts: "l", label: "high" },
+      { id: "a-e", from: "auto", to: "exec", fs: "r", ts: "l", tOff: -22 },
+      { id: "h-e", from: "human", to: "exec", fs: "r", ts: "l", tOff: 22, label: "approved" },
+      { id: "e-t", from: "exec", to: "tests" },
+    ],
+    notes: [{ x: 625, y: 316, text: "rejected: the action is skipped", anchor: "middle" }],
+  },
+  steps: [
+    { title: "A task and a project", actor: "Input", nodes: ["task"] },
+    {
+      title: "The planner lists the actions", actor: "LLM call", nodes: ["task", "planner"], edges: ["t-p"],
+      artifact: {
+        label: "One planned action (illustrative; the fields come from the planner prompt)",
+        kind: "code",
+        body: '{\n  "action": "Push the corrected code to the main branch",\n  "type": "deploy",\n  "target": "main branch",\n  "expected_outcome": "The fix is delivered"\n}',
+      },
+    },
+    { title: "Each action gets a risk score", actor: "LLM call", nodes: ["planner", "risk"], edges: ["p-r"] },
+    { title: "Low and medium risk actions run", actor: "Plain code", nodes: ["risk", "auto", "exec"], edges: ["r-a", "a-e"] },
+    {
+      title: "A person decides on high-risk actions", actor: "Input", nodes: ["risk", "human", "exec"], edges: ["r-h", "h-e"],
+      artifact: {
+        label: "The approval card a reviewer sees (illustrative content)",
+        kind: "text",
+        body: "Approval requested for action 3\n\nAction: Push the corrected code to the main branch\nType: deploy  ·  Target: main branch\n\nRisk score: 8/10 (high)\nReversibility: reversible within window\nScope: team-wide  ·  Data: internal\nWhy: the whole team builds on main, so a bad push affects everyone.\n\n[ Approve ]   [ Reject ]   name, note",
+      },
+    },
+    { title: "The executor carries out what is allowed", actor: "Plain code", nodes: ["auto", "human", "exec"], edges: ["a-e", "h-e"] },
+    { title: "The audit trail and the tests", actor: "Sandbox", nodes: ["exec", "tests"], edges: ["e-t"] },
+  ],
+  run: "python -m patterns.m07_human_approval.agent cart_bugs",
+  files: [
+    { path: "patterns/m07_human_approval/planner.py", what: "lists the actions" },
+    { path: "patterns/m07_human_approval/risk.py", what: "scores risk, builds the approval card" },
+    { path: "patterns/m07_human_approval/executor.py", what: "real edits and test runs, simulated the rest" },
+    { path: "patterns/m07_human_approval/audit.py", what: "append-only audit trail" },
+    { path: "patterns/m07_human_approval/agent.py", what: "plan, then execute with the decisions" },
+  ],
+};
+
+const raw: RawPattern[] = [s1, s2, s3, m1, m2, m3, m4, m5, m6, m7];
 
 export const PATTERNS: Pattern[] = raw.map((p) => {
   const c = COPY[p.code];

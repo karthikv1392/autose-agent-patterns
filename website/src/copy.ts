@@ -264,4 +264,33 @@ export const COPY: Record<string, PatternCopy> = {
       { body: "The loop stops at a pass or at the iteration limit. A pass means the critic is satisfied, not that the code is correct. The tests have the last word." },
     ],
   },
+  M7: {
+    summary: "Risky actions wait for a named reviewer; the rest run, and everything is audited.",
+    context: "Coding agents can edit files, change dependencies, rewrite CI configuration, push and deploy. Some of those actions are easy to undo and some are not.",
+    problem: "Safety, reliability and accountability need a person to hold authority over consequential changes, while waiting for review costs latency and throughput. Full autonomy treats a test run and a force-push alike.",
+    solution: "Plan the work as discrete actions and score the risk of each. Run low and medium risk actions automatically, and hold high-risk ones until a named person approves or rejects them. Log every step in an audit trail.",
+    useWhen: ["Changes affect production, data or other people", "Reversibility differs from step to step", "Someone must be accountable for risky changes"],
+    tradeoff: "The agent is safer and accountable, but approvals interrupt the flow and can become a throughput bottleneck.",
+    pros: [
+      ["Safety", "A person can block a harmful, irreversible or policy-sensitive change."],
+      ["Reliability", "Human judgement covers ambiguity and edge cases the agent cannot."],
+      ["Auditability", "Approval records show who decided what, and why."],
+    ],
+    cons: [
+      ["Latency", "Execution pauses until a reviewer is available."],
+      ["Usability", "Too many interruptions cause approval fatigue and shallow review."],
+      ["Reliability", "Wrong risk boundaries either over-escalate routine work or let a dangerous action through."],
+    ],
+    steps: [
+      { body: "The agent gets a task and the project's files. Nothing has run yet." },
+      { body: "The planner lists exactly the number of actions you set, six by default, in the order it would do them. It plans the fix and its delivery, because the work is not finished until the change ships. The prompt asks for a mix: routine actions such as reading files and running tests, ordinary edits, and one or two high-impact ones such as pushing to a shared branch, editing CI, adding a dependency or deploying. Each action has a type, a target and an expected outcome." },
+      { body: "The classifier scores every action from 1 to 10 and notes its reversibility, scope, data sensitivity and reasoning. The level comes from the score: 1-3 low, 4-6 medium, 7-10 high. Only high needs approval.",
+        points: ["The level is derived from the score, so a model that mislabels an action cannot lower it."] },
+      { body: "Low risk actions run straight away. Medium risk actions also run, and are flagged so a person can see them in the audit trail." },
+      { body: "Each high-risk action waits as an approval card. A reviewer approves or rejects it and records their name and a note. A rejected action is skipped. An action with no decision counts as rejected.",
+        points: ["In the Streamlit demo the reviewer is you, and every high-risk action starts on Reject."] },
+      { body: "The executor runs what is allowed. Editing the project's own files and running the tests are real. Commands, dependencies, deploys and deletes are simulated and marked as such, so the demo never touches real infrastructure." },
+      { body: "Every plan, notification, decision and execution is in the audit trail. Then the hidden tests run on the final project, so you can see whether the decisions left it working. Approving a breaking change makes the tests fail; rejecting it keeps them green." },
+    ],
+  },
 };

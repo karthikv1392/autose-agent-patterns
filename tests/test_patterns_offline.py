@@ -1,4 +1,4 @@
-"""Control-flow tests for the Skill Repository and Generator-Critic patterns.
+"""Control-flow tests for the Skill Repository, Generator-Critic and Human Approval patterns.
 
 The LLM is replaced by a scripted fake, so these run without Ollama. They check what the patterns
 promise: which agent sees what, when the loop stops, and which solutions get saved. The tests are
@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from patterns.m05_skill_repository import agent as skills
 from patterns.m05_skill_repository.skill_store import SkillStore
 from patterns.m06_generator_critic import agent as loop
+from patterns.m07_human_approval import agent as approval
 from shared.tasks import load_reference, load_task
 
 
@@ -176,6 +177,99 @@ class SkillRepositoryTests(unittest.TestCase):
             result = skills.run("parse_duration", store=empty)
         self.assertEqual(len(fake.prompts), 1)
         self.assertTrue(result["solved"])
+
+
+class HumanApprovalTests(unittest.TestCase):
+    """pager_bugs: a routine fix, a risky rename of a public function, a simulated deploy, a test run."""
+
+    ACTIONS = [
+        {"action": "Read pager.py", "type": "read", "target": "pager.py", "expected_outcome": "understand"},
+        {"action": "Fix the off-by-one bugs in pager.py", "type": "edit", "target": "pager.py", "expected_outcome": "bugs fixed"},
+        {"action": "Rename page_count to count_pages in pager.py", "type": "edit", "target": "pager.py", "expected_outcome": "new name"},
+        {"action": "Deploy the fix to production", "type": "deploy", "target": "production", "expected_outcome": "live"},
+        {"action": "Run the test suite", "type": "test", "target": "test_suite.py", "expected_outcome": "green"},
+    ]
+    SCORES = {"Read": 1, "Fix": 5, "Rename": 8, "Deploy": 9, "Run": 2}
+
+    def handler(self, prompt, n):
+        if "discrete, sequential actions" in prompt:
+            return json.dumps({"summary": "fix the pager", "actions": self.ACTIONS})
+        if "Evaluate this action" in prompt:
+            word = re.search(r"Action : (\w+)", prompt).group(1)
+            return json.dumps({"risk_score": self.SCORES[word], "risk_level": "low", "reasoning": "r",
+                               "reversibility": "hard to reverse", "impact_scope": "system-wide"})
+        if "Make this change" in prompt:
+            good = reference_code("pager_bugs")
+            return code_reply(good.replace("def page_count", "def count_pages") if "Rename" in prompt else good)
+        raise AssertionError(prompt[:80])
+
+    def run_pattern(self, decide):
+        fake = FakeLLM(self.handler)
+        with mock.patch("shared.agent.generate", fake):
+            return approval.run("pager_bugs", decide=decide), fake
+
+    def test_rejecting_the_risky_actions_keeps_the_tests_green(self):
+        asked = []
+
+        def reject(action):
+            asked.append(action["index"])
+            return {"status": "rejected", "approver": "sam", "notes": "breaks callers"}
+
+        result, _ = self.run_pattern(reject)
+        self.assertEqual(asked, [3, 4])                               # only the high-risk actions are put to a person
+        self.assertEqual(result["stats"], {"auto": 3, "approved": 0, "rejected": 2, "simulated": 0})
+        self.assertTrue(result["solved"])
+        self.assertIn("def page_count", result["files"]["pager.py"])
+        events = [(r["action_index"], r["event"]) for r in result["audit"]]
+        self.assertIn((3, "rejected"), events)
+        self.assertIn((3, "skipped"), events)
+        self.assertNotIn((3, "executed"), events)
+
+    def test_approving_the_risky_rename_breaks_the_tests_and_the_deploy_is_simulated(self):
+        result, _ = self.run_pattern(lambda a: {"status": "approved", "approver": "sam", "notes": ""})
+        self.assertEqual(result["stats"]["approved"], 2)
+        self.assertEqual(result["stats"]["simulated"], 1)             # the deploy
+        self.assertFalse(result["solved"])                            # the human approved a breaking change
+        self.assertTrue(any(r["actor"] == "sam" and r["event"] == "approved" for r in result["audit"]))
+
+    def test_a_missing_decision_counts_as_rejected(self):
+        fake = FakeLLM(self.handler)
+        with mock.patch("shared.agent.generate", fake):
+            state = approval.plan("pager_bugs")
+            result = approval.execute(state, {})
+        self.assertEqual(result["stats"]["rejected"], 2)
+        self.assertTrue(all(r["actor"] == "system" for r in result["audit"] if r["event"] == "rejected"))
+
+    def test_the_level_comes_from_the_score_not_from_the_models_label(self):
+        fake = FakeLLM(self.handler)                                  # the fake always claims "low"
+        with mock.patch("shared.agent.generate", fake):
+            state = approval.plan("pager_bugs")
+        levels = {a["index"]: a["risk_level"] for a in state["actions"]}
+        self.assertEqual(levels, {1: "low", 2: "medium", 3: "high", 4: "high", 5: "low"})
+        self.assertEqual([e.action_index for e in state["audit"].events("notified")], [3, 4])
+
+    def test_a_read_of_several_files_is_real_and_a_read_of_a_missing_file_is_simulated(self):
+        from patterns.m07_human_approval.executor import execute_action
+        files = {"a.py": "x = 1\n", "b.py": "y = 2\n"}
+        multi = execute_action({"type": "read", "target": "a.py, b.py", "action": "r", "expected_outcome": ""}, files, "", "")
+        missing = execute_action({"type": "read", "target": "test_suite.py", "action": "r", "expected_outcome": ""}, files, "", "")
+        self.assertFalse(multi["simulated"])
+        self.assertTrue(missing["simulated"])
+
+    def test_an_unparseable_plan_falls_back_to_read_edit_test(self):
+        def handler(prompt, n):
+            if "discrete, sequential actions" in prompt:
+                return "I cannot produce JSON"
+            return json.dumps({"risk_score": 2})
+        with mock.patch("shared.agent.generate", FakeLLM(handler)):
+            state = approval.plan("pager_bugs")
+        self.assertEqual([a["type"] for a in state["actions"]], ["read", "edit", "test"])
+
+    def test_audit_sequence_numbers_are_monotonic(self):
+        result, _ = self.run_pattern(lambda a: {"status": "rejected", "approver": "x", "notes": ""})
+        seqs = [r["seq"] for r in result["audit"]]
+        self.assertEqual(seqs, sorted(seqs))
+        self.assertEqual(len(seqs), len(set(seqs)))
 
 
 if __name__ == "__main__":

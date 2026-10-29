@@ -20,6 +20,7 @@ every demo is a software-engineering task whose result is **checked by running r
 | M4 | **Swarm** | Build a class until the suite is green | Coder → Tester → Debugger → Reviewer hand work to each other; the path emerges at runtime. |
 | M5 | **Skill Repository** | Reuse solutions across sessions | The agent searches a persistent library of earlier solutions, adapts what fits, and saves a new skill only when its tests pass. Run `parse_duration`, then `roman_to_int`. |
 | M6 | **Generator-Critic Loop** | Draft, review and revise code | A generator drafts, a critic scores five criteria and lists must-fix issues, and the draft is revised until the gate passes. Hidden tests run on every draft but are never shown to the generator. |
+| M7 | **Human-in-the-Loop Approval** | Gate risky changes | The agent plans actions and scores their risk. Low and medium risk actions run, high-risk ones wait for a named reviewer, and every step goes to an audit trail. Edits and test runs are real; deploys and shell commands are simulated. |
 
 Each pattern's `agent.py` opens with an ASCII diagram and a "why it matters for software engineering"
 note — the Streamlit app shows that docstring as the explanation.
@@ -38,6 +39,7 @@ AutoSE_Agent_Patterns/
 │   ├── m01_debate/ · m02_voting/ · m03_subagent_spawning/ · m04_swarm/
 │   ├── m05_skill_repository/         skill_store.py · skill_agent.py · agent.py
 │   ├── m06_generator_critic/         generator.py · critic.py · agent.py
+│   ├── m07_human_approval/           planner.py · risk.py · executor.py · audit.py · agent.py
 ├── shared/
 │   ├── llm.py              Ollama client (model via AUTOSE_MODEL)
 │   ├── sandbox.py          runs generated code + unittest in a temp dir (ground truth)
@@ -93,7 +95,7 @@ Create `task_data/<name>/` with `task.json` (`title`, `kind`, `entry`, `summary`
 
 ## Learning website
 
-`website/` is a static step-by-step guide to the nine patterns (Vite + React). Each pattern has an interactive
+`website/` is a static step-by-step guide to the ten patterns (Vite + React). Each pattern has an interactive
 diagram that walks through what happens at every step.
 
 ```bash

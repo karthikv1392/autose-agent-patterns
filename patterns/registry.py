@@ -77,6 +77,15 @@ PATTERNS = [
         "options": [{"key": "max_iterations", "label": "Max iterations", "min": 1, "max": 5, "default": 4}],
         "original": "Multi_Agent_Pattern/patterns/p09_generator_critic",
     },
+    {
+        "id": "m07_human_approval", "group": "Multi agent",
+        "title": "Human-in-the-Loop Approval",
+        "tagline": "Risky actions wait for a named reviewer; low and medium risk actions run, and everything is audited.",
+        "tasks": ["cart_bugs", "pager_bugs", "legacy_shop"],
+        "options": [{"key": "num_actions", "label": "Planned actions", "min": 4, "max": 8, "default": 6}],
+        "interactive": True,
+        "original": "Multi_Agent_Pattern/patterns/p08_human_in_the_loop",
+    },
 ]
 
 
