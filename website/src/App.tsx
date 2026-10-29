@@ -71,7 +71,7 @@ function Home() {
           <p className="eyebrow">Course material · <a href={COURSE_URL} target="_blank" rel="noreferrer">Autonomous Software Engineering</a></p>
           <h1>Agent patterns for software engineering</h1>
           <p className="lede">
-            Seven ways to arrange LLM agents around a software task, such as fixing a bug, reviewing a pull request or
+            Nine ways to arrange LLM agents around a software task, such as fixing a bug, reviewing a pull request or
             refactoring a codebase. Every pattern here runs against real tests, and every page walks through how it works
             so you can see where it helps and what it costs.
           </p>
@@ -130,10 +130,10 @@ function Home() {
       </section>
 
       <section className="wrap section" id="patterns">
-        <h2>The seven patterns</h2>
+        <h2>The nine patterns</h2>
         <p className="section-intro">
-          The first three change how a single agent gathers context, picks actions and checks its own work. The last four
-          are about how several agents are connected.
+          The first three change how a single agent gathers context, picks actions and checks its own work. The other six
+          are about how agents, and the work they save, are connected.
         </p>
         <table className="index-table">
           <thead>

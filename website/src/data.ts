@@ -705,7 +705,124 @@ const m4: RawPattern = {
   files: [{ path: "patterns/m04_swarm/agent.py", what: "blackboard, agents, routing rules" }],
 };
 
-const raw: RawPattern[] = [s1, s2, s3, m1, m2, m3, m4];
+/* ───────────────────────────── M5 ───────────────────────────── */
+
+const m5: RawPattern = {
+  id: "skill-repository",
+  code: "M5",
+  group: "Multi-agent",
+  title: "Skill Repository",
+  scenario: "Reuse validated solutions across sessions",
+  task: "parse_duration, roman_to_int, merge_intervals",
+  llmCalls: "2 (search, solve)",
+  verifiedBy: "Hidden unit tests; only passing solutions are saved",
+  diagram: {
+    height: 330,
+    nodes: [
+      { id: "task", label: "Task", sub: "the spec", kind: "input", x: 20, y: 170, w: 110, h: 72 },
+      { id: "library", label: "Skill library", sub: "JSON file, persists between sessions", kind: "data", x: 300, y: 20, w: 260, h: 70 },
+      { id: "search", label: "Search", sub: "reads summaries only", kind: "llm", x: 170, y: 170, w: 140, h: 72 },
+      { id: "solve", label: "Solve", sub: "adapt or write", kind: "llm", x: 400, y: 170, w: 140, h: 72 },
+      { id: "tests", label: "Run tests", sub: "hidden suite", kind: "tool", x: 620, y: 170, w: 130, h: 72 },
+      { id: "save", label: "Save skill", sub: "if green and reusable", kind: "tool", x: 800, y: 170, w: 140, h: 72 },
+    ],
+    edges: [
+      { id: "t-s", from: "task", to: "search" },
+      { id: "lib-s", from: "library", to: "search", fs: "b", ts: "t", fOff: -80, tOff: 0, dashed: true, label: "summaries" },
+      { id: "s-sv", from: "search", to: "solve", label: "chosen skills" },
+      { id: "lib-sv", from: "library", to: "solve", fs: "b", ts: "t", fOff: 80, tOff: 0, dashed: true, label: "full code" },
+      { id: "sv-t", from: "solve", to: "tests", label: "code" },
+      { id: "t-sv", from: "tests", to: "save", label: "pass" },
+      { id: "sv-lib", from: "save", to: "library", pts: [[870, 170], [870, 55], [560, 55]], label: "new skill" },
+    ],
+    notes: [{ x: 685, y: 270, text: "if the tests fail, nothing is saved", anchor: "middle" }],
+  },
+  steps: [
+    { title: "A task arrives", actor: "Input", nodes: ["task"] },
+    { title: "Search by summary", actor: "LLM call", nodes: ["task", "search", "library"], edges: ["t-s", "lib-s"] },
+    { title: "Solve with what was found", actor: "LLM call", nodes: ["search", "solve", "library"], edges: ["s-sv", "lib-sv"] },
+    { title: "Run the hidden tests", actor: "Sandbox", nodes: ["solve", "tests"], edges: ["sv-t"] },
+    {
+      title: "Save only if validated", actor: "Plain code", nodes: ["tests", "save", "library"], edges: ["t-sv", "sv-lib"],
+      artifact: {
+        label: "What a saved skill holds (fields of the seed library)",
+        kind: "code",
+        body: '{\n  "name": "SQL Injection Detector",\n  "description": "Detects common SQL injection patterns...",\n  "task_type": "Code",\n  "tags": ["sql", "security", "injection"],\n  "task_solved": "Write a function to detect SQL injection...",\n  "solution": "import re\\n\\ndef detect_sql_injection(...)",\n  "use_count": 0\n}',
+      },
+    },
+    { title: "The next session starts richer", actor: "Input", nodes: ["library", "task", "search"], edges: ["lib-s"] },
+  ],
+  run: "python -m patterns.m05_skill_repository.agent parse_duration",
+  files: [
+    { path: "patterns/m05_skill_repository/skill_store.py", what: "the persistent library" },
+    { path: "patterns/m05_skill_repository/skill_agent.py", what: "search and solve" },
+    { path: "patterns/m05_skill_repository/agent.py", what: "search, solve, verify, save" },
+  ],
+};
+
+/* ───────────────────────────── M6 ───────────────────────────── */
+
+const m6: RawPattern = {
+  id: "generator-critic",
+  code: "M6",
+  group: "Multi-agent",
+  title: "Generator–Critic Loop",
+  scenario: "Draft, review and revise code until it passes a gate",
+  task: "parse_duration, roman_to_int, merge_intervals",
+  llmCalls: "2 per iteration (generate or revise, critique), up to max_iterations",
+  verifiedBy: "Hidden tests after every iteration; the loop itself never uses them",
+  diagram: {
+    height: 340,
+    nodes: [
+      { id: "spec", label: "Spec", sub: "the task", kind: "input", x: 20, y: 130, w: 110, h: 72 },
+      { id: "gen", label: "Generator", sub: "draft or revise", kind: "llm", x: 190, y: 130, w: 150, h: 72 },
+      { id: "critic", label: "Critic", sub: "scores 5 criteria,\nreads only", kind: "llm", x: 410, y: 130, w: 150, h: 72 },
+      { id: "gate", label: "Quality gate", sub: "score ≥ 7 and\nno must-fix", kind: "tool", x: 630, y: 130, w: 140, h: 72 },
+      { id: "acc", label: "Accepted", sub: "final code", kind: "data", x: 830, y: 130, w: 110, h: 72 },
+      { id: "tests", label: "Hidden tests", sub: "on every draft", kind: "tool", x: 190, y: 250, w: 150, h: 60 },
+    ],
+    edges: [
+      { id: "s-g", from: "spec", to: "gen" },
+      { id: "g-c", from: "gen", to: "critic", label: "draft" },
+      { id: "c-gate", from: "critic", to: "gate", label: "scores" },
+      { id: "gate-acc", from: "gate", to: "acc", label: "pass" },
+      { id: "gate-g", from: "gate", to: "gen", pts: [[700, 130], [700, 62], [265, 62], [265, 130]], label: "fail: revise with the must-fix list" },
+      { id: "g-t", from: "gen", to: "tests", fs: "b", ts: "t", dashed: true, label: "result never shown to the generator" },
+    ],
+    notes: [{ x: 700, y: 275, text: "capped at max_iterations", anchor: "middle" }],
+  },
+  steps: [
+    { title: "A specification and a budget", actor: "Input", nodes: ["spec"] },
+    { title: "The generator drafts", actor: "LLM call", nodes: ["spec", "gen"], edges: ["s-g"] },
+    {
+      title: "The critic reviews", actor: "LLM call", nodes: ["gen", "critic"], edges: ["g-c"],
+      artifact: {
+        label: "Criteria and scoring rules (from the critic prompt)",
+        kind: "text",
+        body: "criteria: correctness, security, efficiency,\n          readability, error_handling\n\n1-4 unacceptable   5-6 below par\n7-8 good           9-10 excellent\n\nPASS: overall score >= 7 AND no must_fix issues",
+      },
+    },
+    { title: "The gate decides", actor: "Plain code", nodes: ["critic", "gate", "acc"], edges: ["c-gate", "gate-acc"] },
+    { title: "Revise against the must-fix list", actor: "LLM call", nodes: ["gate", "gen"], edges: ["gate-g"] },
+    {
+      title: "The tests run on the side", actor: "Sandbox", nodes: ["gen", "tests"], edges: ["g-t"],
+      artifact: {
+        label: "What the demo reports per iteration (illustrative values, not a recorded run)",
+        kind: "text",
+        body: "iteration   critic score   critic   hidden tests\n1           5              fail     6/11\n2           7              fail     9/11\n3           8              pass     9/11",
+      },
+    },
+    { title: "The loop stops", actor: "Plain code", nodes: ["gate", "acc"], edges: ["gate-acc"] },
+  ],
+  run: "python -m patterns.m06_generator_critic.agent parse_duration",
+  files: [
+    { path: "patterns/m06_generator_critic/generator.py", what: "first draft and refinement" },
+    { path: "patterns/m06_generator_critic/critic.py", what: "criteria, scoring, the pass rule" },
+    { path: "patterns/m06_generator_critic/agent.py", what: "the loop and the tests on the side" },
+  ],
+};
+
+const raw: RawPattern[] = [s1, s2, s3, m1, m2, m3, m4, m5, m6];
 
 export const PATTERNS: Pattern[] = raw.map((p) => {
   const c = COPY[p.code];

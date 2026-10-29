@@ -4,3 +4,4 @@ __pycache__/
 *.py[cod]
 node_modules/
 dist/
+patterns/m05_skill_repository/skill_library.json

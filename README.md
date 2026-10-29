@@ -18,6 +18,8 @@ every demo is a software-engineering task whose result is **checked by running r
 | M2 | **Voting** | Pick the best of N generated solutions | Candidates are executed on probe inputs; the behaviour most agree on wins — no tests needed to choose. |
 | M3 | **Sub-agent Spawning** | Modernise a 4-module legacy codebase | A spawner invents one specialist per module; they run in parallel; the existing test suite + static metrics verify. |
 | M4 | **Swarm** | Build a class until the suite is green | Coder → Tester → Debugger → Reviewer hand work to each other; the path emerges at runtime. |
+| M5 | **Skill Repository** | Reuse solutions across sessions | The agent searches a persistent library of earlier solutions, adapts what fits, and saves a new skill only when its tests pass. Run `parse_duration`, then `roman_to_int`. |
+| M6 | **Generator-Critic Loop** | Draft, review and revise code | A generator drafts, a critic scores five criteria and lists must-fix issues, and the draft is revised until the gate passes. Hidden tests run on every draft but are never shown to the generator. |
 
 Each pattern's `agent.py` opens with an ASCII diagram and a "why it matters for software engineering"
 note — the Streamlit app shows that docstring as the explanation.
@@ -34,6 +36,8 @@ AutoSE_Agent_Patterns/
 │   ├── s02_incremental_tool_agent/   tools.py · agent.py
 │   ├── s03_self_reflection/          planner.py · reflector.py · executor.py · agent.py
 │   ├── m01_debate/ · m02_voting/ · m03_subagent_spawning/ · m04_swarm/
+│   ├── m05_skill_repository/         skill_store.py · skill_agent.py · agent.py
+│   ├── m06_generator_critic/         generator.py · critic.py · agent.py
 ├── shared/
 │   ├── llm.py              Ollama client (model via AUTOSE_MODEL)
 │   ├── sandbox.py          runs generated code + unittest in a temp dir (ground truth)
@@ -59,7 +63,7 @@ python -m patterns.m04_swarm.agent lru_cache
 Use another model: `AUTOSE_MODEL=qwen3 ./run.sh` (or pick it in the sidebar). Hidden "thinking" is off by
 default for speed; set `AUTOSE_THINK=1` to enable it for reasoning models.
 
-Validate the task data any time: `python -m unittest discover -s tests`.
+Validate the task data and the loop logic any time: `python -m unittest discover -s tests`. The pattern tests use a scripted fake LLM, so they need no Ollama.
 
 ## How to read results
 
@@ -70,6 +74,10 @@ Validate the task data any time: `python -m unittest discover -s tests`.
 * **Voting caveat:** on `merge_intervals` the candidates agree and are right. On `roman_to_int` /
   `parse_duration` they often share the same blind spot, so the majority can be confidently wrong.
   Agreement is not correctness — voting only helps when errors are independent.
+
+## The skill library
+
+The Skill Repository keeps its library in `patterns/m05_skill_repository/skill_library.json`, created from `skill_library.seed.json` on first use and ignored by git. Delete it to start over.
 
 ## Safety note
 
@@ -85,7 +93,7 @@ Create `task_data/<name>/` with `task.json` (`title`, `kind`, `entry`, `summary`
 
 ## Learning website
 
-`website/` is a static step-by-step guide to the seven patterns (Vite + React). Each pattern has an interactive
+`website/` is a static step-by-step guide to the nine patterns (Vite + React). Each pattern has an interactive
 diagram that walks through what happens at every step.
 
 ```bash

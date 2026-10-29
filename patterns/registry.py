@@ -61,6 +61,22 @@ PATTERNS = [
         "options": [{"key": "max_hops", "label": "Max hand-offs", "min": 6, "max": 20, "default": 12}],
         "original": "Multi_Agent_Pattern/patterns/p07_swarm",
     },
+    {
+        "id": "m05_skill_repository", "group": "Multi agent",
+        "title": "Skill Repository",
+        "tagline": "Search earlier solutions, adapt what fits, and save validated solutions for the next session.",
+        "tasks": ["parse_duration", "roman_to_int", "merge_intervals"],
+        "options": [{"key": "top_k", "label": "Skills to retrieve", "min": 1, "max": 3, "default": 2}],
+        "original": "Multi_Agent_Pattern/patterns/p11_skill_library",
+    },
+    {
+        "id": "m06_generator_critic", "group": "Multi agent",
+        "title": "Generator-Critic Loop",
+        "tagline": "A generator drafts, a critic scores against criteria, and the draft is revised until a gate passes.",
+        "tasks": ["parse_duration", "roman_to_int", "merge_intervals"],
+        "options": [{"key": "max_iterations", "label": "Max iterations", "min": 1, "max": 5, "default": 4}],
+        "original": "Multi_Agent_Pattern/patterns/p09_generator_critic",
+    },
 ]
 
 
